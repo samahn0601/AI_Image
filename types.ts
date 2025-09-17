@@ -9,6 +9,26 @@ export enum ClothingOption {
   Original = 'original',
   Casual = 'casual',
   Formal = 'formal',
+  Custom = 'custom',
+}
+
+export enum Gender {
+  Male = 'male',
+  Female = 'female',
+  AI = 'ai',
+}
+
+export enum AgeGroup {
+  Adult = 'adult',
+  Teenager = 'teenager',
+  Child = 'child',
+  Infant = 'infant',
+}
+
+export interface GeneratedImage {
+  id: string;
+  standard: string; // base64 data URL
+  upscaled?: string; // base64 data URL
 }
 
 interface BasePhotoSpec {

@@ -11,7 +11,7 @@ export const FramingSelector: React.FC<FramingSelectorProps> = ({ options, selec
   return (
     <div className="space-y-4">
         <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-700">3. 구도 선택</h2>
+            <h3 className="text-xl font-bold text-gray-700">구도 선택</h3>
             <p className="text-gray-500 mt-1">원하는 프로필 사진 구도를 선택하세요.</p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

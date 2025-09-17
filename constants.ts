@@ -1,5 +1,15 @@
 import { PhotoType, PhotoSpec, ProfileSpec, ClothingOption } from './types';
 
+const AUTO_COLOR_CORRECTION_PROMPT = `**Mandatory First Step: Automatic Color Correction.** Before any other edits, perform a global automatic color correction. Analyze the image and fix the white balance to remove color casts, adjust exposure for ideal brightness, and slightly boost saturation for natural vibrancy. This corrected image is the base for all subsequent steps.\n\n`;
+
+export const UPSCALE_PROMPT = `**Task: 2x AI Image Upscale & Enhancement.**
+You are provided with an image. Your ONLY task is to increase its resolution and enhance its details without changing its content, composition, style, or colors.
+1.  **Upscale:** Increase the image resolution by a factor of 2 (2x).
+2.  **Enhance Details:** Sharpen fine details in features like hair, eyes, and clothing texture.
+3.  **Preserve Identity:** DO NOT alter the subject's facial features, expression, pose, or the background. The output must be the exact same image, but at a higher quality.
+4.  **No Content Change:** Do not add, remove, or change any elements in the image.
+The output must be only the upscaled image file.`;
+
 export const CLOTHING_OPTIONS: Record<ClothingOption, { name: string; prompt: string }> = {
   [ClothingOption.Original]: {
     name: '현재 복장 유지',
@@ -7,11 +17,30 @@ export const CLOTHING_OPTIONS: Record<ClothingOption, { name: string; prompt: st
   },
   [ClothingOption.Casual]: {
     name: '캐주얼 복장',
-    prompt: `**Attire Instruction: Replace the subject's current attire with a simple, neat casual top.** This could be a solid-colored t-shirt, a simple sweater, or a polo shirt. The clothing should be appropriate for a clean, everyday look. Avoid logos, patterns, or distracting elements.`
+    prompt: `**Attire Instruction: Replace the subject's current attire with simple, neat, and age-appropriate casual wear.** You MUST adapt the style to the subject's specified context.
+- **For Adults/Teenagers:** Generate a suitable top like a t-shirt, a simple sweater, or a polo shirt.
+- **For Children (approx. 4-12):** Generate a playful t-shirt, a casual polo shirt, or a simple, comfortable dress.
+- **For Infants/Toddlers (approx. 0-3):** Generate a cute and comfortable baby onesie, a soft romper, or a simple t-shirt.
+The style must be clean and free of logos, patterns, or distracting elements.`
   },
   [ClothingOption.Formal]: {
     name: '정장',
-    prompt: `**Attire Instruction: Replace the subject's current attire with neat, professional business attire.** For a masculine appearance, use a dark-colored suit jacket, a white or light-blue dress shirt, and a tie. For a feminine appearance, use a smart blouse or a professional blazer. Ensure the new attire fits the subject's body frame and neckline naturally.`
+    prompt: `**Attire Instruction: Replace the subject's current attire with neat and age-appropriate formal wear.** You MUST adapt the style to the subject's specified context.
+- **For Adults/Teenagers:** Generate professional business attire. For a masculine appearance, this typically means a suit and tie; for a feminine appearance, a smart blouse or blazer.
+- **For Children (approx. 4-12):** Generate dressy attire suitable for a special occasion, such as a smart dress shirt, a small blazer, a children's party dress, or a tidy sweater.
+- **For Infants/Toddlers (approx. 0-3):** Generate a tiny ceremonial outfit (like a christening gown), a smart baby romper with a bow tie, or a simple, elegant dress shirt.
+**CRITICAL RULE:** **DO NOT put a child or infant in miniature adult business wear.** The goal is age-appropriate formal attire, not a shrunken suit.
+Ensure the new attire fits the subject's body frame and neckline naturally.`
+  },
+  [ClothingOption.Custom]: {
+    name: '스타일 직접 업로드',
+    prompt: `**Multi-Modal Attire Instruction: You are being provided with two images.**
+- **Image 1:** The primary photo of the subject whose face and body to use.
+- **Image 2:** A reference image showing a specific clothing item, accessory, or overall style.
+**Your Task:** Your primary task is to digitally dress the person from Image 1 in the attire shown in Image 2, **adapting it perfectly to their age and body shape.**
+- **Natural & Age-Appropriate Synthesis:** The clothing from the reference image must be seamlessly and realistically synthesized onto the subject. Pay critical attention to lighting, shadows, perspective, and the subject's body shape. **CRUCIAL:** If the subject is a child and the reference clothing is for an adult, you must intelligently recreate the clothing in a child's size and proportion, not just shrink the image. The fit must be natural for the subject's age.
+- **Identity Preservation:** Do NOT alter the subject's face, hair, or body from Image 1. Only the clothing and accessories should be changed based on Image 2.
+- **Focus on Style:** Accurately replicate the style, color, texture, and key details of the clothing from the reference image.`
   }
 };
 
@@ -19,31 +48,46 @@ export const PHOTO_SPECS: Record<PhotoType, PhotoSpec> = {
   [PhotoType.Passport]: {
     name: '여권 사진 (Passport)',
     size: '3.5cm x 4.5cm',
-    features: ['흰색 배경', '양쪽 귀 노출', '안경/모자 제거', '무표정', '복장 선택 가능'],
+    features: ['자동 색상 보정', '흰색 배경', '양쪽 귀 노출', '안경/모자 제거', '무표정', '복장 선택 가능'],
     supportsClothingOptions: true,
-    prompt: `Critically edit this user-uploaded photo to meet the extremely strict regulations for a Republic of Korea passport photo. The final image dimensions MUST be equivalent to 3.5cm x 4.5cm, and the aspect ratio MUST be strictly 3.5:4.5. The retouching must be subtle and preserve the subject's core identity. Adhere to all rules without exception.
+    prompt: AUTO_COLOR_CORRECTION_PROMPT + `Critically edit this user-uploaded photo to meet the extremely strict regulations for a Republic of Korea passport photo. The retouching must be subtle and preserve the subject's core identity. Adhere to all rules without exception.
+**CRITICAL GOAL: The final output MUST have a strict 3.5:4.5 aspect ratio, regardless of the original image's shape.** This is the most important rule.
+
 1. **Prohibited Items (MUST REMOVE):**
     - **Glasses:** Digitally and completely remove any eyeglasses, sunglasses, or colored lenses. The eyes must be fully visible with no obstruction or reflection.
     - **Headwear:** Remove any hats, caps, or headbands. Do not add them.
     - **Accessories:** Remove any accessories that cause reflections or obscure facial features, such as large earrings, necklaces, or visible piercings. The final image should be free of distracting jewelry.
 2. **Background:** Change the background to a completely plain, uniform, and pure white (#FFFFFF) with absolutely no shadows or patterns.
-3. **Pose & Framing:** Adjust posture to be perfectly upright. Center the face in the frame. The head must be straight, not tilted, looking directly at the camera. The distance from the top of the head to the chin should be between 3.2cm and 3.6cm within the 4.5cm height.
-4. **Facial Expression & Features:** Enforce a strictly neutral, closed-mouth expression. Both ears and the full facial outline MUST be clearly visible and not obscured by hair.
+3. **Framing & Composition (NON-NEGOTIABLE REGULATION):** The composition must be a tight, professional head-and-shoulders shot that fills the frame correctly.
+    - **Centering:** The face MUST be centered horizontally. The vertical center line should pass through the middle of the nose.
+    - **Head Size (Mandatory):** The distance from the top of the head to the chin MUST be between 3.2cm and 3.6cm within the 4.5cm photo height. This ensures the face occupies the correct proportion of the frame.
+    - **Headroom (ABSOLUTE RULE):** A small but clear amount of white background MUST be visible above the top of the head. **Under NO circumstances should any part of the subject's hair or the top of their head be cropped out.** The head must be fully contained within the frame. Conversely, DO NOT leave excessive empty space. The framing should be tight and professional.
+    - **Shoulders:** Both shoulders MUST be visible, level, and occupy the lower portion of the frame. The crop should be at the upper chest level, creating a balanced composition.
+4. **Pose & Expression:**
+    - **Pose:** Adjust posture to be perfectly upright. The head must be straight, not tilted, looking directly at the camera.
+    - **Expression:** Enforce a strictly neutral, closed-mouth expression. Both ears and the full facial outline MUST be clearly visible and not obscured by hair.
 5. **Regulation-Compliant Retouching:**
     - **Symmetry:** Subtly correct minor facial asymmetry for a more balanced appearance, ensuring eye levels are aligned.
     - **Skin:** Even out skin tone and remove temporary blemishes (like pimples or scratches). Reduce glare or oiliness. The retouching must look completely natural and not alter permanent features like scars or moles.
     - **Hair:** Meticulously tidy any stray hairs that disrupt the silhouette against the white background.
-The output MUST be only the final, edited image file, with a strict 3.5:4.5 aspect ratio, without any text, explanation, or additional content.`,
+6. **Mandatory Final Crop (ABSOLUTE & FINAL RULE):** This is the final and most critical step. After all other edits are complete, you MUST CROP the image to a **strict 3.5:4.5 aspect ratio**. **IGNORE the aspect ratio of the original input image.** The final output file itself MUST have this exact aspect ratio. This is a non-negotiable requirement.
+The output MUST be only the final, edited, and correctly cropped image file, without any text, explanation, or additional content.`,
   },
   [PhotoType.License]: {
     name: '운전면허 / 주민등록증 사진',
     size: '3.5cm x 4.5cm',
-    features: ['흰색 배경', '얼굴 윤곽 노출', '자연스러운 보정', '복장 선택 가능'],
+    features: ['자동 색상 보정', '흰색 배경', '얼굴 윤곽 노출', '자연스러운 보정', '복장 선택 가능'],
     supportsClothingOptions: true,
-    prompt: `Critically edit this user-uploaded photo to meet the official regulations for a Republic of Korea driver's license and resident registration card. The final output MUST look like a real photograph taken in a professional studio, not an obvious AI-generated image. The final image dimensions MUST be equivalent to 3.5cm x 4.5cm, and the aspect ratio MUST be strictly 3.5:4.5.
+    prompt: AUTO_COLOR_CORRECTION_PROMPT + `Critically edit this user-uploaded photo to meet the official regulations for a Republic of Korea driver's license and resident registration card. The final output MUST look like a real photograph taken in a professional studio, not an obvious AI-generated image.
+**CRITICAL GOAL: The final output MUST have a strict 3.5:4.5 aspect ratio, regardless of the original image's shape.** This is the most important rule.
+
 1. **Background:** Change the background to a completely plain, uniform, and pure white (#FFFFFF) with no shadows or patterns.
-2. **Pose & Framing:** Adjust posture to be upright and formal. Center the face in the frame, with the head straight and looking directly forward.
-3. **Facial Expression & Features:** Ensure a strictly neutral expression with the mouth closed. Do not show teeth. While ears do not need to be fully exposed, the entire facial outline (from forehead to chin) must be clearly visible and not obscured by hair or shadows.
+2. **Framing & Composition (CRITICAL ID PHOTO RULE):** The final image must be framed as a classic head-and-shoulders ID photo that correctly fills the frame.
+    - **Centering:** The subject's face MUST be centered horizontally.
+    - **Head Size (Mandatory):** For the 3.5cm x 4.5cm format, the head length (from crown to chin) MUST be between 3.2cm and 3.6cm. This is a strict regulation.
+    - **Headroom (ABSOLUTE RULE):** A small, appropriate amount of space MUST be left above the top of the head. **Under NO circumstances should any part of the subject's hair or the top of their head be cropped out.** The head must be fully contained within the frame. AVOID excessive empty space. The composition must feel balanced, not empty.
+    - **Shoulders:** Both shoulders MUST be visible and level. The crop should be at the upper chest level, ensuring the subject's upper body properly anchors the photo.
+3. **Pose & Expression:** Adjust posture to be upright and formal. The head must be straight, not tilted, looking directly at the camera. Ensure a strictly neutral expression with the mouth closed. Do not show teeth. While ears do not need to be fully exposed, the entire facial outline (from forehead to chin) must be clearly visible and not obscured by hair or shadows.
 4. **Prohibited Items:**
     - **Headwear:** Remove any hats, caps, or headbands.
     - **Colored Lenses/Sunglasses:** Remove any sunglasses or colored contact lenses.
@@ -54,40 +98,58 @@ The output MUST be only the final, edited image file, with a strict 3.5:4.5 aspe
     - **Skin:** Smooth the skin texture naturally, remove temporary blemishes (like pimples), and reduce oiliness. Do not make the skin look plastic-like. Preserve natural skin texture.
     - **Hair:** Neatly tidy any stray hairs.
     - **Lighting:** Correct lighting to remove any shadows on the face and ensure even illumination.
-The output MUST be only the final, edited image file, with a strict 3.5:4.5 aspect ratio, without any text, explanation, or additional content.`,
+7. **Mandatory Final Crop (ABSOLUTE & FINAL RULE):** This is the final and most critical step. After all other edits are complete, you MUST CROP the image to a **strict 3.5:4.5 aspect ratio**. **IGNORE the aspect ratio of the original input image.** The final output file itself MUST have this exact aspect ratio. This is a non-negotiable requirement.
+The output MUST be only the final, edited, and correctly cropped image file, without any text, explanation, or additional content.`,
   },
   [PhotoType.Resume]: {
     name: '이력서 사진 (반명함)',
     size: '3cm x 4cm',
-    features: ['자연스러운 표정/자신감 있는 미소 2종 생성', '본인 얼굴 특징 유지', '전문적인 리터칭', '복장 선택 가능'],
+    features: ['자동 색상 보정', '자연스러운 표정/자신감 있는 미소 2종 생성', '본인 얼굴 특징 유지', '전문적인 리터칭', '복장 선택 가능'],
     supportsClothingOptions: true,
     prompts: {
-      natural: `Critically EDIT this user-uploaded photo to create a professional Korean resume photo (Banmyeongham) with a **natural, confident expression**. The final image dimensions MUST be equivalent to 3cm x 4cm, and the aspect ratio MUST be strictly 3:4. The absolute highest priority is to **MAINTAIN THE SUBJECT'S ORIGINAL FACIAL IDENTITY AND FEATURES**. The goal is enhancement, not alteration. Avoid creating a result that looks significantly different from the original person.
+      natural: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo to create a professional Korean resume photo (Banmyeongham) with a **natural, confident expression**. The absolute highest priority is to **MAINTAIN THE SUBJECT'S ORIGINAL FACIAL IDENTITY AND FEATURES**. The goal is enhancement, not alteration. Avoid creating a result that looks significantly different from the original person.
+**CRITICAL GOAL: The final output MUST have a strict 3:4 aspect ratio, regardless of the original image's shape.** This is the most important rule.
+
 1. **Identity Preservation:** Do NOT change the fundamental shape of the eyes, nose, mouth, or overall face structure. The final image must be clearly recognizable as the same person.
 2. **Expression:** Adjust the expression to be relaxed yet confident, projecting competence and approachability. This is not a full smile, but a calm, natural look with a hint of warmth in the eyes. The mouth should be closed and relaxed. Ensure the look is professional and trustworthy.
 3. **Background:** Replace the background with a professional, clean, solid color (e.g., light-to-medium cool gray or soft light blue).
-4. **Pose & Gaze:** Subtly correct posture to be upright and confident. Ensure the head is straight and looking directly at the camera.
-5. **Subtle, Professional Retouching:**
+4. **Framing & Composition (CRITICAL ID PHOTO RULE):** The final image must be framed as a perfect head-and-shoulders ID photo. The subject must fill the frame appropriately, avoiding awkward crops or excessive empty space.
+    - **Centering:** The subject's face MUST be centered horizontally.
+    - **Head Size:** The subject's head, from the top of the hair to the bottom of the chin, MUST occupy approximately 70-80% of the image's total height. This is the key to a standard ID photo look.
+    - **Headroom (ABSOLUTE RULE):** A small, balanced amount of space MUST be left above the top of the head. **Under NO circumstances should any part of the subject's hair or the top of their head be cropped out.** The head must be fully contained within the frame. DO NOT leave a large, distracting gap of empty background.
+    - **Shoulders:** Both shoulders MUST be visible and level. The crop should be at the upper chest level, providing a stable base for the portrait.
+5. **Pose & Gaze:** Subtly correct posture to be upright and confident. Ensure the head is straight and looking directly at the camera.
+6. **Subtle, Professional Retouching:**
     - **Symmetry & Contouring:** Make only minor adjustments to facial symmetry. If contouring is applied, it must be extremely subtle to add a touch of professional definition without changing the face's natural shape.
     - **Natural Skin:** Retouch skin to remove temporary blemishes (pimples, redness) and reduce excessive shine. CRUCIALLY, preserve the natural skin texture. Do not make it look overly smooth or artificial.
     - **Hair:** Tidy stray hairs and neaten the overall hairstyle, but do not change the hair's fundamental style or color.
-The output MUST be only the final, edited image file with a strict 3:4 aspect ratio.`,
-      smiling: `Critically EDIT this user-uploaded photo to create a professional Korean resume photo (Banmyeongham) with a **confident, ambitious smile**. The final image dimensions MUST be equivalent to 3cm x 4cm, and the aspect ratio MUST be strictly 3:4. The absolute highest priority is to **MAINTAIN THE SUBJECT'S ORIGINAL FACIAL IDENTITY AND FEATURES**. The goal is enhancement, not alteration. Avoid creating a result that looks significantly different from the original person.
+7. **Mandatory Final Crop (ABSOLUTE & FINAL RULE):** This is the final and most critical step. After all other edits are complete, you MUST CROP the image to a **strict 3:4 aspect ratio**. **IGNORE the aspect ratio of the original input image.** The final output file itself MUST have this exact aspect ratio. This is a non-negotiable requirement.
+The output MUST be only the final, edited, and correctly cropped image file.`,
+      smiling: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo to create a professional Korean resume photo (Banmyeongham) with a **confident, ambitious smile**. The absolute highest priority is to **MAINTAIN THE SUBJECT'S ORIGINAL FACIAL IDENTITY AND FEATURES**. The goal is enhancement, not alteration. Avoid creating a result that looks significantly different from the original person.
+**CRITICAL GOAL: The final output MUST have a strict 3:4 aspect ratio, regardless of the original image's shape.** This is the most important rule.
+
 1. **Identity Preservation:** Do NOT change the fundamental shape of the eyes, nose, mouth, or overall face structure. The final image must be clearly recognizable as the same person.
 2. **Expression:** Transform the expression into a **confident and engaging smile, clearly distinct from a simple neutral look**. The smile should project positivity and ambition, making the subject look proactive and friendly. A smile with teeth slightly visible is ideal, but it must look genuine and not forced. It should convey competence and a positive attitude.
 3. **Background:** Replace the background with a professional, clean, solid color (e.g., light-to-medium cool gray or soft light blue).
-4. **Pose & Gaze:** Subtly correct posture to be upright and confident. Ensure the head is straight and looking directly at the camera.
-5. **Subtle, Professional Retouching:**
+4. **Framing & Composition (CRITICAL ID PHOTO RULE):** The final image must be framed as a perfect head-and-shoulders ID photo. The subject must fill the frame appropriately, avoiding awkward crops or excessive empty space.
+    - **Centering:** The subject's face MUST be centered horizontally.
+    - **Head Size:** The subject's head, from the top of the hair to the bottom of the chin, MUST occupy approximately 70-80% of the image's total height. This is the key to a standard ID photo look.
+    - **Headroom (ABSOLUTE RULE):** A small, balanced amount of space MUST be left above the top of the head. **Under NO circumstances should any part of the subject's hair or the top of their head be cropped out.** The head must be fully contained within the frame. DO NOT leave a large, distracting gap of empty background.
+    - **Shoulders:** Both shoulders MUST be visible and level. The crop should be at the upper chest level, providing a stable base for the portrait.
+5. **Pose & Gaze:** Subtly correct posture to be upright and confident. Ensure the head is straight and looking directly at the camera.
+6. **Subtle, Professional Retouching:**
     - **Symmetry & Contouring:** Make only minor adjustments to facial symmetry. If contouring is applied, it must be extremely subtle to add a touch of professional definition withoutchanging the face's natural shape.
     - **Natural Skin:** Retouch skin to remove temporary blemishes (pimples, redness) and reduce excessive shine. CRUCIALLY, preserve the natural skin texture. Do not make it look overly smooth or artificial.
     - **Hair:** Tidy stray hairs and neaten the overall hairstyle, but do not change the hair's fundamental style or color.
-The output MUST be only the final, edited image file with a strict 3:4 aspect ratio.`,
+7. **Mandatory Final Crop (ABSOLUTE & FINAL RULE):** This is the final and most critical step. After all other edits are complete, you MUST CROP the image to a **strict 3:4 aspect ratio**. **IGNORE the aspect ratio of the original input image.** The final output file itself MUST have this exact aspect ratio. This is a non-negotiable requirement.
+The output MUST be only the final, edited, and correctly cropped image file.`,
     },
   },
   [PhotoType.Profile]: {
     name: '전문 프로필 사진 (Profile)',
     size: '선택 구도 → 3가지 스타일 생성',
-    features: ['4가지 전문 구도 선택', '스튜디오급 조명 & 배경', '자신감 있는 표정 연출', '성별 맞춤 스타일링'],
+    features: ['자동 색상 보정', '4가지 전문 구도 선택', '스튜디오급 조명 & 배경', '자신감 있는 표정 연출', '복장 선택 가능'],
+    supportsClothingOptions: true,
     styleNames: {
       classic: '클래식',
       modern: '모던',
@@ -97,7 +159,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
       headshot: {
         name: '헤드샷 (얼굴 중심)',
         prompts: {
-          classic: `Critically EDIT this user-uploaded photo into a **timeless, Classic Professional Headshot**. The goal is a clean, trustworthy, and high-end studio portrait.
+          classic: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo into a **timeless, Classic Professional Headshot**. The goal is a clean, trustworthy, and high-end studio portrait.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the fundamental shape of the eyes, nose, mouth, or overall face structure. The result must be clearly recognizable as the same person, just professionally photographed.
 **2. Framing & Composition:** The final image must be a classic headshot, framed tightly from the top of the shoulders to just above the head.
 **3. Pose & Expression:** Adjust the pose to be straight and facing the camera directly. The expression should be confident yet approachable—a gentle, closed-mouth smile or a relaxed but engaged neutral look. Project trustworthiness.
@@ -106,7 +168,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
 **6. Professional Retouching:** Perform subtle, professional-grade retouching. Even out skin tone, remove temporary blemishes (pimples, stray hairs), and reduce excessive shine. CRUCIALLY, you must preserve the natural skin texture to avoid a plastic look.
 **7. Attire:** Based on the subject's apparent gender, morph their clothing into classic professional attire. For a masculine look, a dark suit jacket over a crisp white or light blue dress shirt is ideal. For a feminine look, a smart blazer or a professional blouse is appropriate.
 **Output:** The final output MUST be only the edited image file, with no text or explanation.`,
-          modern: `Critically EDIT this user-uploaded photo into a **sharp, Modern Professional Headshot**. The goal is a crisp, energetic, and contemporary portrait.
+          modern: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo into a **sharp, Modern Professional Headshot**. The goal is a crisp, energetic, and contemporary portrait.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the fundamental shape of the eyes, nose, mouth, or overall face structure. The result must be clearly recognizable as the same person.
 **2. Framing & Composition:** The final image must be a modern headshot, framed from the shoulders up, possibly with a slightly more dynamic angle or crop.
 **3. Pose & Expression:** The expression should be energetic, engaging, and confident. A genuine, slight smile is ideal. The pose can be slightly angled to feel more dynamic.
@@ -115,7 +177,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
 **6. Professional Retouching:** Perform clean and sharp retouching. Enhance detail and sharpness in the eyes and hair. CRUCIALLY, you must preserve the natural skin texture.
 **7. Attire:** Based on the subject's apparent gender, morph their clothing into stylish, modern business casual attire (e.g., a sharp blazer without a tie, a stylish professional top).
 **Output:** The final output MUST be only the edited image file, with no text or explanation.`,
-          cinematic: `Critically EDIT this user-uploaded photo into a **powerful, Cinematic Charcoal Headshot**. The goal is a dramatic, moody, and sophisticated portrait.
+          cinematic: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo into a **powerful, Cinematic Charcoal Headshot**. The goal is a dramatic, moody, and sophisticated portrait.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the fundamental shape of the eyes, nose, mouth, or overall face structure. The result must be clearly recognizable as the same person.
 **2. Framing & Composition:** The final image must be a headshot, framed from the shoulders up.
 **3. Pose & Expression:** The expression should be intense and confident. A neutral but powerful gaze is preferred over a smile. The pose should feel strong and deliberate.
@@ -129,7 +191,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
       bustShot: {
         name: '바스트샷 (상반신 일부)',
         prompts: {
-          classic: `Critically EDIT this user-uploaded photo for a **timeless, Classic Professional Bust Shot**. The goal is a traditional, trustworthy, and polished corporate portrait.
+          classic: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **timeless, Classic Professional Bust Shot**. The goal is a traditional, trustworthy, and polished corporate portrait.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the subject's core features.
 **2. Framing & Composition:** The composition must be a bust shot, framed from the mid-chest area up to just above the head.
 **3. Pose & Expression:** Adjust the pose to have a slight angle to the body (a classic "quarter turn"), with the face turned towards the camera for a traditional, confident look. The expression should be warm, trustworthy, and professional, such as a soft, genuine closed-mouth smile.
@@ -138,7 +200,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
 **6. Professional Retouching:** Perform subtle, professional-grade retouching. Even out skin tone, remove temporary blemishes, and tidy hair. CRUCIALLY, preserve natural skin texture.
 **7. Attire:** Based on the subject's apparent gender, morph the clothing into classic business attire (e.g., a full suit jacket, dress shirt, and tie for men; a professional blouse and blazer for women).
 **Output:** The final output MUST be only the edited image file.`,
-          modern: `Critically EDIT this user-uploaded photo for a **bright, Modern Professional Bust Shot**. The goal is an approachable, authentic, and contemporary portrait.
+          modern: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **bright, Modern Professional Bust Shot**. The goal is an approachable, authentic, and contemporary portrait.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the subject's core features.
 **2. Framing & Composition:** The composition must be a bust shot, framed from the mid-chest area up.
 **3. Pose & Expression:** Adjust the pose to be natural and relaxed, perhaps leaning slightly forward or with a slight head tilt to engage the viewer. The expression should be approachable, friendly, and confident, featuring a genuine, open smile.
@@ -147,7 +209,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
 **6. Professional Retouching:** Perform clean and natural retouching. Enhance sharpness in the eyes. CRUCIALLY, preserve natural skin texture.
 **7. Attire:** Based on the subject's apparent gender, morph the clothing into smart business casual that reflects personality (e.g., open-collar dress shirt, stylish knitwear, modern blouse).
 **Output:** The final output MUST be only the edited image file.`,
-          cinematic: `Critically EDIT this user-uploaded photo for a **moody, Cinematic Professional Bust Shot**. The goal is a compelling, thoughtful, and artistic portrait.
+          cinematic: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **moody, Cinematic Professional Bust Shot**. The goal is a compelling, thoughtful, and artistic portrait.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the subject's core features.
 **2. Framing & Composition:** The composition must be a bust shot, framed from the mid-chest area up.
 **3. Pose & Expression:** Adjust the pose to be more introspective, perhaps with the subject looking slightly off-camera or with a thoughtful, serious, and compelling expression. Do not use a smile.
@@ -161,7 +223,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
       waistUpShot: {
         name: '웨이스트업샷 (상반신)',
         prompts: {
-          classic: `Critically EDIT this user-uploaded photo for a **formal, Classic Waist-Up Business Portrait**. The goal is a portrait that conveys leadership and capability.
+          classic: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **formal, Classic Waist-Up Business Portrait**. The goal is a portrait that conveys leadership and capability.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the subject's core features.
 **2. Framing & Composition:** The composition must be a waist-up shot, showing the subject from the waist to just above the head.
 **3. Pose & Expression:** Adjust to a traditional business pose, such as arms lightly crossed or one hand in a pocket, conveying confidence and authority. The expression must be confident, capable, and trustworthy; a slight, knowing smile is appropriate.
@@ -170,7 +232,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
 **6. Professional Retouching:** Perform polished, high-end retouching appropriate for a corporate website or publication. Preserve skin texture.
 **7. Attire:** Based on the subject's apparent gender, morph into a full business suit for a masculine appearance, or a professional dress or suit for a feminine appearance. Ensure the attire is impeccably neat.
 **Output:** The final output MUST be only the edited image file.`,
-          modern: `Critically EDIT this user-uploaded photo for a **dynamic, Modern Waist-Up Lifestyle Portrait**. The goal is to tell a story about the person's profession and personality.
+          modern: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **dynamic, Modern Waist-Up Lifestyle Portrait**. The goal is to tell a story about the person's profession and personality.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the subject's core features.
 **2. Framing & Composition:** The composition must be a waist-up shot.
 **3. Pose & Expression:** Adjust to a dynamic and natural pose, showing movement or interaction with the environment (e.g., leaning against a wall, seated at a desk, gesturing while talking). The expression should be natural, engaging, and reflective of their personality.
@@ -179,7 +241,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
 **6. Professional Retouching:** Perform clean, natural retouching that enhances the authentic feel.
 **7. Attire:** Based on the subject's apparent gender, morph into professional attire that is authentic to their field (e.g., creative professional wear, tech industry casual).
 **Output:** The final output MUST be only the edited image file.`,
-          cinematic: `Critically EDIT this user-uploaded photo for a **visionary, Cinematic Waist-Up Environmental Portrait**. The goal is a powerful, narrative-driven image.
+          cinematic: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **visionary, Cinematic Waist-Up Environmental Portrait**. The goal is a powerful, narrative-driven image.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity. Do NOT alter the subject's core features.
 **2. Framing & Composition:** The composition must be a waist-up shot.
 **3. Pose & Expression:** Adjust to a powerful, commanding stance within the environment. The expression should be strong, determined, and visionary—looking towards the future, not necessarily at the camera.
@@ -193,7 +255,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
       fullBodyShot: {
         name: '전신샷 (Full Body)',
         prompts: {
-          classic: `Critically EDIT this user-uploaded photo for a **formal, Classic Full Body Business Portrait**. The goal is an authoritative and polished portrait for official use.
+          classic: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **formal, Classic Full Body Business Portrait**. The goal is an authoritative and polished portrait for official use.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity.
 **2. Framing & Composition:** The composition must be a full-body shot, capturing the subject from head to toe with appropriate breathing room in the frame.
 **3. Pose & Expression:** Adjust to a confident, professional standing pose (e.g., weight on one foot, hands gently at the side or one in a pocket). The expression must be professional and approachable.
@@ -202,7 +264,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
 **6. Professional Retouching:** Perform clean, high-end retouching, paying attention to both face and clothing to ensure a flawless appearance.
 **7. Attire:** Based on the subject's apparent gender, morph into a complete, well-fitted business suit (for a masculine appearance) or a professional dress/pantsuit (for a feminine appearance). Shoes must be professional and clean.
 **Output:** The final output MUST be only the edited image file.`,
-          modern: `Critically EDIT this user-uploaded photo for a **relaxed, Modern Full Body Environmental Portrait**. The goal is an authentic portrait that showcases personality and professional context.
+          modern: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **relaxed, Modern Full Body Environmental Portrait**. The goal is an authentic portrait that showcases personality and professional context.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity.
 **2. Framing & Composition:** The composition must be a full-body shot.
 **3. Pose & Expression:** Adjust to a relaxed, natural stance within a relevant environment (e.g., standing in their office, walking through a creative space). The pose should feel un-staged. The expression must be engaging and genuine.
@@ -211,7 +273,7 @@ The output MUST be only the final, edited image file with a strict 3:4 aspect ra
 **6. Professional Retouching:** Perform natural-looking retouching that enhances the scene's authenticity.
 **7. Attire:** Based on the subject's apparent gender, morph into smart business casual that is appropriate for their field. The entire outfit, including shoes, should feel cohesive and modern.
 **Output:** The final output MUST be only the edited image file.`,
-          cinematic: `Critically EDIT this user-uploaded photo for a **dramatic, Cinematic Full Body Portrait**. The goal is a powerful, narrative image suitable for a feature story or brand campaign.
+          cinematic: AUTO_COLOR_CORRECTION_PROMPT + `Critically EDIT this user-uploaded photo for a **dramatic, Cinematic Full Body Portrait**. The goal is a powerful, narrative image suitable for a feature story or brand campaign.
 **1. Identity Preservation (ABSOLUTE PRIORITY):** You MUST maintain the subject's original facial identity.
 **2. Framing & Composition:** The composition must be a full-body shot, potentially using a lower angle to enhance presence.
 **3. Pose & Expression:** Adjust to a powerful, dynamic, or heroic stance. The subject should own the space. The expression must be strong, determined, or visionary.
