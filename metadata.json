@@ -1,0 +1,5 @@
+{
+  "name": "AI Korean ID Photo Editor",
+  "description": "An application that uses AI to edit user-uploaded photos to meet official Korean ID photo specifications for passports, driver's licenses, and resumes. Users can select the photo type, upload an image, and receive a professionally edited photo ready for use.",
+  "requestFramePermissions": []
+}
