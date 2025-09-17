@@ -9,9 +9,10 @@ interface GeneratedImageViewProps {
   spec: PhotoSpec;
   framingOption?: string;
   onReset: () => void;
+  onImageClick: (src: string) => void;
 }
 
-export const GeneratedImageView: React.FC<GeneratedImageViewProps> = ({ originalImageSrc, generatedImageSrcs, spec, framingOption, onReset }) => {
+export const GeneratedImageView: React.FC<GeneratedImageViewProps> = ({ originalImageSrc, generatedImageSrcs, spec, framingOption, onReset, onImageClick }) => {
   const totalImages = 1 + generatedImageSrcs.length;
 
   const isResume = 'prompts' in spec && !('options' in spec);
@@ -69,12 +70,24 @@ export const GeneratedImageView: React.FC<GeneratedImageViewProps> = ({ original
       <div className={`grid grid-cols-1 ${gridColsClass} gap-4 w-full`}>
         <div className="text-center">
           <p className="font-semibold mb-2 text-gray-600">원본</p>
-          <img src={originalImageSrc} alt="Original" className="rounded-lg shadow-md w-full object-contain" />
+          <button
+            onClick={() => onImageClick(originalImageSrc)}
+            className="group w-full block relative rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label="원본 이미지 확대 보기"
+          >
+            <img src={originalImageSrc} alt="Original" className="rounded-lg shadow-md w-full object-contain transition-transform duration-300 group-hover:scale-105" />
+          </button>
         </div>
         {generatedImageSrcs.map((src, index) => (
           <div key={index} className="text-center">
             <p className="font-semibold mb-2 text-gray-600">{getLabel(index)}</p>
-            <img src={src} alt={`Generated ${index + 1}`} className="rounded-lg shadow-md w-full object-contain" />
+            <button
+                onClick={() => onImageClick(src)}
+                className="group w-full block relative rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                aria-label={`${getLabel(index)} 이미지 확대 보기`}
+             >
+                <img src={src} alt={`Generated ${index + 1}`} className="rounded-lg shadow-md w-full object-contain transition-transform duration-300 group-hover:scale-105" />
+             </button>
           </div>
         ))}
       </div>

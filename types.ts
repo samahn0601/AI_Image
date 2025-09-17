@@ -5,6 +5,12 @@ export enum PhotoType {
   Profile = 'profile',
 }
 
+export enum ClothingOption {
+  Original = 'original',
+  Casual = 'casual',
+  Formal = 'formal',
+}
+
 interface BasePhotoSpec {
   name: string;
   size: string;
@@ -13,10 +19,12 @@ interface BasePhotoSpec {
 
 interface SinglePromptSpec extends BasePhotoSpec {
   prompt: string;
+  supportsClothingOptions?: boolean;
 }
 
 interface MultiVersionSpec extends BasePhotoSpec {
   prompts: Record<string, string>;
+  supportsClothingOptions?: boolean;
 }
 
 export interface ProfileSpec extends BasePhotoSpec {

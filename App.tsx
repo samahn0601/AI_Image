@@ -4,10 +4,13 @@ import { ImageUploader } from './components/ImageUploader';
 import { PhotoTypeSelector } from './components/PhotoTypeSelector';
 import { GeneratedImageView } from './components/GeneratedImageView';
 import { LoadingSpinner } from './components/LoadingSpinner';
-import { PhotoType, ProfileSpec } from './types';
-import { PHOTO_SPECS } from './constants';
+import { PhotoType, ProfileSpec, PhotoSpec } from './types';
+import { PHOTO_SPECS, CLOTHING_OPTIONS } from './constants';
 import { editIdPhoto } from './services/geminiService';
 import { FramingSelector } from './components/FramingSelector';
+import { ClothingSelector } from './components/ClothingSelector';
+import { ClothingOption } from './types';
+import { Modal } from './components/Modal';
 
 interface UploadedFile {
   file: File;
@@ -18,19 +21,26 @@ const App: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const [photoType, setPhotoType] = useState<PhotoType>(PhotoType.Passport);
   const [framingOption, setFramingOption] = useState<string | null>(null);
+  const [clothingOption, setClothingOption] = useState<ClothingOption>(ClothingOption.Original);
   const [generatedImages, setGeneratedImages] = useState<string[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [modalImageSrc, setModalImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
+    const spec = PHOTO_SPECS[photoType];
     // When photo type changes, set the default framing option if it's a profile photo
     if (photoType === PhotoType.Profile) {
-      const spec = PHOTO_SPECS[PhotoType.Profile] as ProfileSpec;
-      const defaultOption = Object.keys(spec.options)[0];
+      const defaultOption = Object.keys((spec as ProfileSpec).options)[0];
       setFramingOption(defaultOption);
     } else {
       setFramingOption(null);
     }
+    // Reset clothing option if the new type doesn't support it
+    if (!('supportsClothingOptions' in spec && spec.supportsClothingOptions)) {
+      setClothingOption(ClothingOption.Original);
+    }
+
   }, [photoType]);
 
 
@@ -69,6 +79,9 @@ const App: React.FC = () => {
     try {
       const spec = PHOTO_SPECS[photoType];
       let results: string[] = [];
+      const clothingPrompt = ('supportsClothingOptions' in spec && spec.supportsClothingOptions) 
+        ? CLOTHING_OPTIONS[clothingOption].prompt 
+        : '';
 
       if ('options' in spec) { // Profile photo with framing options
         const profileSpec = spec as ProfileSpec;
@@ -82,14 +95,15 @@ const App: React.FC = () => {
         results.push(...resolvedResults);
 
       } else if ('prompts' in spec) { // Multi-version photo (Resume)
-        const prompts = Object.values(spec.prompts);
+        const prompts = Object.values(spec.prompts).map(p => `${p}\n${clothingPrompt}`);
         const generationPromises = prompts.map(prompt =>
           editIdPhoto(uploadedFile.base64, uploadedFile.file.type, prompt)
         );
         const resolvedResults = await Promise.all(generationPromises);
         results.push(...resolvedResults);
       } else { // Single-version photo (Passport, License)
-        const resultBase64 = await editIdPhoto(uploadedFile.base64, uploadedFile.file.type, spec.prompt);
+        const finalPrompt = `${spec.prompt}\n${clothingPrompt}`;
+        const resultBase64 = await editIdPhoto(uploadedFile.base64, uploadedFile.file.type, finalPrompt);
         results.push(resultBase64);
       }
       
@@ -100,7 +114,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedFile, photoType, framingOption]);
+  }, [uploadedFile, photoType, framingOption, clothingOption]);
 
   const handleReset = () => {
     setUploadedFile(null);
@@ -110,6 +124,7 @@ const App: React.FC = () => {
   };
 
   const currentSpec = PHOTO_SPECS[photoType];
+  const showClothingSelector = uploadedFile && 'supportsClothingOptions' in currentSpec && currentSpec.supportsClothingOptions;
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
@@ -132,6 +147,13 @@ const App: React.FC = () => {
                 </div>
                 <PhotoTypeSelector selectedType={photoType} onTypeChange={setPhotoType} />
 
+                {showClothingSelector && (
+                    <ClothingSelector 
+                        selectedOption={clothingOption}
+                        onOptionChange={setClothingOption}
+                    />
+                )}
+
                 {photoType === PhotoType.Profile && framingOption && (
                   <FramingSelector
                     options={(currentSpec as ProfileSpec).options}
@@ -145,7 +167,7 @@ const App: React.FC = () => {
                   disabled={isLoading}
                   className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center text-lg mt-4"
                 >
-                  {isLoading ? '생성 중...' : '증명사진 생성하기'}
+                  {isLoading ? '생성 중...' : '사진 생성하기'}
                 </button>
               </>
             )}
@@ -157,13 +179,14 @@ const App: React.FC = () => {
             {isLoading && <LoadingSpinner />}
             {error && <p className="text-red-500 text-center bg-red-50 p-3 rounded-lg">{error}</p>}
             
-            {!isLoading && generatedImages && generatedImages.length > 0 && (
+            {!isLoading && uploadedFile && generatedImages && generatedImages.length > 0 && (
               <GeneratedImageView
-                originalImageSrc={URL.createObjectURL(uploadedFile!.file)}
+                originalImageSrc={URL.createObjectURL(uploadedFile.file)}
                 generatedImageSrcs={generatedImages}
                 spec={currentSpec}
                 framingOption={framingOption ?? undefined}
                 onReset={handleReset}
+                onImageClick={setModalImageSrc}
               />
             )}
 
@@ -176,6 +199,7 @@ const App: React.FC = () => {
           </div>
         </div>
       </main>
+      <Modal src={modalImageSrc} onClose={() => setModalImageSrc(null)} />
     </div>
   );
 };

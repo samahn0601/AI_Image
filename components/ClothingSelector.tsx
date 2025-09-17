@@ -1,21 +1,22 @@
 import React from 'react';
-import { ProfileSpec } from '../types';
+import { ClothingOption } from '../types';
+import { CLOTHING_OPTIONS } from '../constants';
 
-interface FramingSelectorProps {
-  options: ProfileSpec['options'];
-  selectedOption: string;
-  onOptionChange: (option: string) => void;
+interface ClothingSelectorProps {
+  selectedOption: ClothingOption;
+  onOptionChange: (option: ClothingOption) => void;
 }
 
-export const FramingSelector: React.FC<FramingSelectorProps> = ({ options, selectedOption, onOptionChange }) => {
+export const ClothingSelector: React.FC<ClothingSelectorProps> = ({ selectedOption, onOptionChange }) => {
   return (
     <div className="space-y-4">
         <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-700">3. 구도 선택</h2>
-            <p className="text-gray-500 mt-1">원하는 프로필 사진 구도를 선택하세요.</p>
+            <h2 className="text-2xl font-bold text-gray-700">3. 복장 선택</h2>
+            <p className="text-gray-500 mt-1">원하는 복장 스타일을 선택하세요.</p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {Object.entries(options).map(([key, { name }]) => {
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {(Object.keys(CLOTHING_OPTIONS) as Array<ClothingOption>).map((key) => {
+            const { name } = CLOTHING_OPTIONS[key];
             const isSelected = selectedOption === key;
             return (
             <button
